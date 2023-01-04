@@ -114,6 +114,9 @@ type Client interface {
 	// OptionsReader returns a ClientOptionsReader which is a copy of the clientoptions
 	// in use by the client.
 	OptionsReader() ClientOptionsReader
+	// I need it because I will create the client firstly,but I need to subscribe in the OnConnectHandler,
+	// So I need to expose this function.
+	WithOnConnect(OnConnectHandler)
 }
 
 // client implements the Client interface
@@ -170,6 +173,14 @@ func NewClient(o *ClientOptions) Client {
 	c.obound = make(chan *PacketAndToken)
 	c.oboundP = make(chan *PacketAndToken)
 	return c
+}
+
+func (c *client) WithOnConnect(onConnect OnConnectHandler) {
+	c.options.OnConnect = onConnect
+}
+
+func (c *client) WithConnectionLost(onConnectionLost ConnectionLostHandler) {
+	c.options.OnConnectionLost = onConnectionLost
 }
 
 // AddRoute allows you to add a handler for messages on a specific topic
