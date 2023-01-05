@@ -114,15 +114,29 @@ type Client interface {
 	// OptionsReader returns a ClientOptionsReader which is a copy of the clientoptions
 	// in use by the client.
 	OptionsReader() ClientOptionsReader
-	// I need it because I will create the client firstly,but I need to subscribe in the OnConnectHandler,
+	// I need it because I will create the client firstly,but I need to subscribe topics inside the OnConnectHandler,
 	// So I need to expose this function.
-	WithOnConnect(OnConnectHandler)
+	// It should be called before call Connect
+	OnConnect(OnConnectHandler)
+	// I need it because I will create the client firstly,but I need to unsubscribe topics inside the ConnectionLostHandler,
+	// So I need to expose this function.
+	// It should be called before call Connect
+	OnConnectionLost(ConnectionLostHandler)
+	// It should be called before call Connect
+	OnReconnect(ReconnectHandler)
+	// It should be called before call Connect
+	OnConnectAttempt(ConnectionAttemptHandler)
 }
 
 // client implements the Client interface
 // clients are safe for concurrent use by multiple
 // goroutines
 type client struct {
+	onConnect        OnConnectHandler
+	onConnectionLost ConnectionLostHandler
+	onReconnecting   ReconnectHandler
+	onConnectAttempt ConnectionAttemptHandler
+
 	lastSent        atomic.Value // time.Time - the last time a packet was successfully sent to network
 	lastReceived    atomic.Value // time.Time - the last time a packet was successfully received from network
 	pingOutstanding int32        // set to 1 if a ping has been sent but response not ret received
@@ -175,12 +189,20 @@ func NewClient(o *ClientOptions) Client {
 	return c
 }
 
-func (c *client) WithOnConnect(onConnect OnConnectHandler) {
-	c.options.OnConnect = onConnect
+func (c *client) OnConnect(onConnect OnConnectHandler) {
+	c.onConnect = onConnect
 }
 
-func (c *client) WithConnectionLost(onConnectionLost ConnectionLostHandler) {
-	c.options.OnConnectionLost = onConnectionLost
+func (c *client) OnConnectionLost(onConnectionLost ConnectionLostHandler) {
+	c.onConnectionLost = onConnectionLost
+}
+
+func (c *client) OnReconnect(onReconnect ReconnectHandler) {
+	c.onReconnecting = onReconnect
+}
+
+func (c *client) OnConnectAttempt(onConnectAttempt ConnectionAttemptHandler) {
+	c.onConnectAttempt = onConnectAttempt
 }
 
 // AddRoute allows you to add a handler for messages on a specific topic
@@ -318,8 +340,8 @@ func (c *client) reconnect(connectionUp connCompletedFn) {
 	)
 
 	for {
-		if nil != c.options.OnReconnecting {
-			c.options.OnReconnecting(c, &c.options)
+		if nil != c.onReconnecting {
+			c.onReconnecting(c, &c.options)
 		}
 		var err error
 		conn, _, _, err = c.attemptConnection()
@@ -377,9 +399,9 @@ func (c *client) attemptConnection() (net.Conn, byte, bool, error) {
 		DEBUG.Println(CLI, "about to write new connect msg")
 	CONN:
 		tlsCfg := c.options.TLSConfig
-		if c.options.OnConnectAttempt != nil {
+		if c.onConnectAttempt != nil {
 			DEBUG.Println(CLI, "using custom onConnectAttempt handler...")
-			tlsCfg = c.options.OnConnectAttempt(broker, c.options.TLSConfig)
+			tlsCfg = c.onConnectAttempt(broker, c.options.TLSConfig)
 		}
 		connDeadline := time.Now().Add(c.options.ConnectTimeout) // Time by which connection must be established
 		dialer := c.options.Dialer
@@ -570,8 +592,8 @@ func (c *client) internalConnLost(whyConnLost error) {
 		if reconnect {
 			go c.reconnect(reConnDone) // Will set connection status to reconnecting
 		}
-		if c.options.OnConnectionLost != nil {
-			go c.options.OnConnectionLost(c, whyConnLost)
+		if c.onConnectionLost != nil {
+			go c.onConnectionLost(c, whyConnLost)
 		}
 		DEBUG.Println(CLI, "internalConnLost complete")
 	}()
@@ -622,8 +644,8 @@ func (c *client) startCommsWorkers(conn net.Conn, connectionUp connCompletedFn, 
 		return false
 	}
 	DEBUG.Println(CLI, "client is connected/reconnected")
-	if c.options.OnConnect != nil {
-		go c.options.OnConnect(c)
+	if c.onConnect != nil {
+		go c.onConnect(c)
 	}
 
 	// c.oboundP and c.obound need to stay active for the life of the client because, depending upon the options,

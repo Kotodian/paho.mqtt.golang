@@ -247,9 +247,7 @@ func Test_Will(t *testing.T) {
 	sops := NewClientOptions().AddBroker(FVTTCP)
 	sops.SetClientID("will-giver")
 	sops.SetWill("/wills", "good-byte!", 0, false)
-	sops.SetConnectionLostHandler(func(client Client, err error) {
-		fmt.Println("OnConnectionLost!")
-	})
+
 	sops.SetAutoReconnect(false)
 	c := NewClient(sops).(*client)
 
@@ -263,6 +261,9 @@ func Test_Will(t *testing.T) {
 	})
 	wops.SetAutoReconnect(false)
 	wsub := NewClient(wops)
+	wsub.OnConnectionLost(func(client Client, err error) {
+		fmt.Println("OnConnectionLost!")
+	})
 
 	if wToken := wsub.Connect(); wToken.Wait() && wToken.Error() != nil {
 		t.Fatalf("Error on Client.Connect(): %v", wToken.Error())
@@ -290,9 +291,7 @@ func Test_CleanSession(t *testing.T) {
 
 	sops := NewClientOptions().AddBroker(FVTTCP)
 	sops.SetClientID("clsn-sender")
-	sops.SetConnectionLostHandler(func(client Client, err error) {
-		fmt.Println("OnConnectionLost!")
-	})
+
 	sops.SetAutoReconnect(false)
 	c := NewClient(sops).(*client)
 
@@ -307,7 +306,9 @@ func Test_CleanSession(t *testing.T) {
 	})
 	wops.SetAutoReconnect(false)
 	wsub := NewClient(wops)
-
+	wsub.OnConnectionLost(func(client Client, err error) {
+		fmt.Println("OnConnectionLost!")
+	})
 	if wToken := wsub.Connect(); wToken.Wait() && wToken.Error() != nil {
 		t.Fatalf("Error on Client.Connect(): %v", wToken.Error())
 	}
@@ -367,8 +368,6 @@ func Test_Binary_Will(t *testing.T) {
 	sops := NewClientOptions().AddBroker(FVTTCP)
 	sops.SetClientID("will-giver")
 	sops.SetBinaryWill("/wills", will, 0, false)
-	sops.SetConnectionLostHandler(func(client Client, err error) {
-	})
 	sops.SetAutoReconnect(false)
 	c := NewClient(sops).(*client)
 
@@ -381,6 +380,9 @@ func Test_Binary_Will(t *testing.T) {
 	})
 	wops.SetAutoReconnect(false)
 	wsub := NewClient(wops)
+	wsub.OnConnectionLost(func(c Client, err error) {
+		fmt.Println("OnConnectionLost!")
+	})
 
 	if wToken := wsub.Connect(); wToken.Wait() && wToken.Error() != nil {
 		t.Fatalf("Error on Client.Connect(): %v", wToken.Error())
@@ -1089,12 +1091,12 @@ func Test_ping1_idle5(t *testing.T) {
 	ops := NewClientOptions()
 	ops.AddBroker(FVTTCP)
 	ops.SetClientID("p3i10")
-	ops.SetConnectionLostHandler(func(c Client, err error) {
-		t.Fatalf("Connection-lost handler was called: %s", err)
-	})
 	ops.SetKeepAlive(4 * time.Second)
 
 	c := NewClient(ops)
+	c.OnConnectionLost(func(c Client, err error) {
+		t.Fatalf("Connection-lost handler was called: %s", err)
+	})
 
 	if token := c.Connect(); token.Wait() && token.Error() != nil {
 		t.Fatalf("Error on Client.Connect(): %v", token.Error())
@@ -1108,13 +1110,13 @@ func Test_autoreconnect(t *testing.T) {
 	ops.AddBroker(FVTTCP)
 	ops.SetClientID("auto_reconnect")
 	ops.SetAutoReconnect(true)
-	ops.SetOnConnectHandler(func(c Client) {
-		t.Log("Connected")
-	})
+
 	ops.SetKeepAlive(2 * time.Second)
 
 	c := NewClient(ops)
-
+	c.OnConnect(func(c Client) {
+		t.Log("Connected")
+	})
 	if token := c.Connect(); token.Wait() && token.Error() != nil {
 		t.Fatalf("Error on Client.Connect(): %v", token.Error())
 	}
@@ -1498,9 +1500,6 @@ func Test_DisconnectWhileProcessingIncomingPublish(t *testing.T) {
 	sops.SetWriteTimeout(500 * time.Millisecond) // We will be sending a lot of publish messages and want go routines to clear...
 	// sops.SetOrderMatters(false)
 	sops.SetClientID("dwpip-sub")
-	// We need to know when the subscriber has lost its connection (this indicates that the deadlock has not occurred)
-	sDisconnected := make(chan struct{})
-	sops.SetConnectionLostHandler(func(Client, error) { close(sDisconnected) })
 
 	msgReceived := make(chan struct{})
 	var oneMsgReceived sync.Once
@@ -1510,6 +1509,9 @@ func Test_DisconnectWhileProcessingIncomingPublish(t *testing.T) {
 	}
 
 	s := NewClient(sops).(*client) // s = subscriber
+	// We need to know when the subscriber has lost its connection (this indicates that the deadlock has not occurred)
+	sDisconnected := make(chan struct{})
+	s.OnConnectionLost(func(Client, error) { close(sDisconnected) })
 	if sToken := s.Connect(); sToken.Wait() && sToken.Error() != nil {
 		t.Fatalf("Error on subscriber Client.Connect(): %v", sToken.Error())
 	}

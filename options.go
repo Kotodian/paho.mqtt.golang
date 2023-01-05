@@ -92,30 +92,31 @@ type ClientOptions struct {
 	ConnectRetry            bool
 	Store                   Store
 	DefaultPublishHandler   MessageHandler
-	OnConnect               OnConnectHandler
-	OnConnectionLost        ConnectionLostHandler
-	OnReconnecting          ReconnectHandler
-	OnConnectAttempt        ConnectionAttemptHandler
-	WriteTimeout            time.Duration
-	MessageChannelDepth     uint
-	ResumeSubs              bool
-	HTTPHeaders             http.Header
-	WebsocketOptions        *WebsocketOptions
-	MaxResumePubInFlight    int // // 0 = no limit; otherwise this is the maximum simultaneous messages sent while resuming
-	Dialer                  *net.Dialer
-	CustomOpenConnectionFn  OpenConnectionFunc
-	AutoAckDisabled         bool
+	// OnConnect               OnConnectHandler
+	// OnConnectionLost        ConnectionLostHandler
+	// OnReconnecting          ReconnectHandler
+	// OnConnectAttempt        ConnectionAttemptHandler
+	WriteTimeout           time.Duration
+	MessageChannelDepth    uint
+	ResumeSubs             bool
+	HTTPHeaders            http.Header
+	WebsocketOptions       *WebsocketOptions
+	MaxResumePubInFlight   int // // 0 = no limit; otherwise this is the maximum simultaneous messages sent while resuming
+	Dialer                 *net.Dialer
+	CustomOpenConnectionFn OpenConnectionFunc
+	AutoAckDisabled        bool
 }
 
 // NewClientOptions will create a new ClientClientOptions type with some
 // default values.
-//   Port: 1883
-//   CleanSession: True
-//   Order: True (note: it is recommended that this be set to FALSE unless order is important)
-//   KeepAlive: 30 (seconds)
-//   ConnectTimeout: 30 (seconds)
-//   MaxReconnectInterval 10 (minutes)
-//   AutoReconnect: True
+//
+//	Port: 1883
+//	CleanSession: True
+//	Order: True (note: it is recommended that this be set to FALSE unless order is important)
+//	KeepAlive: 30 (seconds)
+//	ConnectTimeout: 30 (seconds)
+//	MaxReconnectInterval 10 (minutes)
+//	AutoReconnect: True
 func NewClientOptions() *ClientOptions {
 	o := &ClientOptions{
 		Servers:                 nil,
@@ -139,16 +140,16 @@ func NewClientOptions() *ClientOptions {
 		ConnectRetryInterval:    30 * time.Second,
 		ConnectRetry:            false,
 		Store:                   nil,
-		OnConnect:               nil,
-		OnConnectionLost:        DefaultConnectionLostHandler,
-		OnConnectAttempt:        nil,
-		WriteTimeout:            0, // 0 represents timeout disabled
-		ResumeSubs:              false,
-		HTTPHeaders:             make(map[string][]string),
-		WebsocketOptions:        &WebsocketOptions{},
-		Dialer:                  &net.Dialer{Timeout: 30 * time.Second},
-		CustomOpenConnectionFn:  nil,
-		AutoAckDisabled:         false,
+		// OnConnect:               nil,
+		// OnConnectionLost:        DefaultConnectionLostHandler,
+		// OnConnectAttempt:        nil,
+		WriteTimeout:           0, // 0 represents timeout disabled
+		ResumeSubs:             false,
+		HTTPHeaders:            make(map[string][]string),
+		WebsocketOptions:       &WebsocketOptions{},
+		Dialer:                 &net.Dialer{Timeout: 30 * time.Second},
+		CustomOpenConnectionFn: nil,
+		AutoAckDisabled:        false,
 	}
 	return o
 }
@@ -327,33 +328,33 @@ func (o *ClientOptions) SetDefaultPublishHandler(defaultHandler MessageHandler) 
 
 // SetOnConnectHandler sets the function to be called when the client is connected. Both
 // at initial connection time and upon automatic reconnect.
-func (o *ClientOptions) SetOnConnectHandler(onConn OnConnectHandler) *ClientOptions {
-	o.OnConnect = onConn
-	return o
-}
+// func (o *ClientOptions) SetOnConnectHandler(onConn OnConnectHandler) *ClientOptions {
+// 	o.OnConnect = onConn
+// 	return o
+// }
 
 // SetConnectionLostHandler will set the OnConnectionLost callback to be executed
 // in the case where the client unexpectedly loses connection with the MQTT broker.
-func (o *ClientOptions) SetConnectionLostHandler(onLost ConnectionLostHandler) *ClientOptions {
-	o.OnConnectionLost = onLost
-	return o
-}
+// func (o *ClientOptions) SetConnectionLostHandler(onLost ConnectionLostHandler) *ClientOptions {
+// 	o.OnConnectionLost = onLost
+// 	return o
+// }
 
 // SetReconnectingHandler sets the OnReconnecting callback to be executed prior
 // to the client attempting a reconnect to the MQTT broker.
-func (o *ClientOptions) SetReconnectingHandler(cb ReconnectHandler) *ClientOptions {
-	o.OnReconnecting = cb
-	return o
-}
+// func (o *ClientOptions) SetReconnectingHandler(cb ReconnectHandler) *ClientOptions {
+// 	o.OnReconnecting = cb
+// 	return o
+// }
 
 // SetConnectionAttemptHandler sets the ConnectionAttemptHandler callback to be executed prior
 // to each attempt to connect to an MQTT broker. Returns the *tls.Config that will be used when establishing
 // the connection (a copy of the tls.Config from ClientOptions will be passed in along with the broker URL).
 // This allows connection specific changes to be made to the *tls.Config.
-func (o *ClientOptions) SetConnectionAttemptHandler(onConnectAttempt ConnectionAttemptHandler) *ClientOptions {
-	o.OnConnectAttempt = onConnectAttempt
-	return o
-}
+// func (o *ClientOptions) SetConnectionAttemptHandler(onConnectAttempt ConnectionAttemptHandler) *ClientOptions {
+// 	o.OnConnectAttempt = onConnectAttempt
+// 	return o
+// }
 
 // SetWriteTimeout puts a limit on how long a mqtt publish should block until it unblocks with a
 // timeout error. A duration of 0 never times out. Default never times out
@@ -450,6 +451,7 @@ func (o *ClientOptions) SetCustomOpenConnectionFn(customOpenConnectionFn OpenCon
 }
 
 // SetAutoAckDisabled enables or disables the Automated Acking of Messages received by the handler.
+//
 //	By default it is set to false. Setting it to true will disable the auto-ack globally.
 func (o *ClientOptions) SetAutoAckDisabled(autoAckDisabled bool) *ClientOptions {
 	o.AutoAckDisabled = autoAckDisabled
