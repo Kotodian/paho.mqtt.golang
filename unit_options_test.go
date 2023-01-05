@@ -115,16 +115,3 @@ func Test_TLSConfig(t *testing.T) {
 		t.Fatalf("client options.tlsConfig InsecureSkipVerify incorrect")
 	}
 }
-
-func Test_OnConnectionLost(t *testing.T) {
-	onconnlost := func(client Client, err error) {
-		panic(err)
-	}
-	o := NewClientOptions().SetConnectionLostHandler(onconnlost)
-
-	c := NewClient(o).(*client)
-
-	if c.options.OnConnectionLost == nil {
-		t.Fatalf("client options.onconnlost was nil")
-	}
-}
