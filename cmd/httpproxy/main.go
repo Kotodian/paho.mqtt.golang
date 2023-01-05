@@ -22,9 +22,10 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
-	"golang.org/x/net/proxy"
 	"log"
 	"net/url"
+
+	"golang.org/x/net/proxy"
 
 	// "log"
 	"os"
@@ -88,20 +89,19 @@ func main() {
 
 	connOpts.SetTLSConfig(&tls.Config{InsecureSkipVerify: *skipVerify, ClientAuth: tls.NoClientCert})
 
-	connOpts.OnConnect = func(c MQTT.Client) {
+	client := MQTT.NewClient(connOpts)
+	client.OnConnect(func(c MQTT.Client) {
 		if token := c.Subscribe(*topic, byte(*qos), onMessageReceived); token.Wait() && token.Error() != nil {
 			panic(token.Error())
 		}
-	}
-
+	})
 	// Illustrates customized TLS configuration prior to connection attempt
-	connOpts.OnConnectAttempt = func(broker *url.URL, tlsCfg *tls.Config) *tls.Config {
+	client.OnConnectAttempt(func(broker *url.URL, tlsCfg *tls.Config) *tls.Config {
 		cfg := tlsCfg.Clone()
 		cfg.ServerName = broker.Hostname()
 		return cfg
-	}
+	})
 
-	client := MQTT.NewClient(connOpts)
 	if token := client.Connect(); token.Wait() && token.Error() != nil {
 		panic(token.Error())
 	} else {
